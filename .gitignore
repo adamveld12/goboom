@@ -1,0 +1,4 @@
+goboom
+test/*
+.vscode/*
+debug.test
