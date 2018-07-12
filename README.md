@@ -32,9 +32,14 @@ func main() {
 
 ## How to contribute
 
+Start the server using `make dev`
+
+
 You will need a page with boomerang setup to emit beacons at your server. The simplest way is to use this page:
 
+
 [http://boomerang-test.surge.sh/](http://boomerang-test.surge.sh/)
+
 
 This will send an HTTP `POST` to `localhost:3000/beacon` making it easy for you to test things.
 

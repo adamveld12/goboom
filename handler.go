@@ -73,20 +73,20 @@ func parseBeacon(req *http.Request) (Beacon, error) {
 		}
 	}
 
-	if referer := req.Header.Get("Referer"); referer != "" {
-		result.Referer = referer
-	} else {
-		result.Referer = fmt.Sprintf("http://%s", req.RemoteAddr)
+	if metricURL, ok := result.Metrics["r"]; ok && len(metricURL) > 0 {
+		result.Referer = metricURL[0]
+	} else if req.Referer() != "" {
+		result.Referer = req.Referer()
 	}
 
-	if metricURL, ok := result.Metrics["u"]; ok && len(metricURL) > 0 {
-		result.Source = metricURL[0]
-	} else {
-		result.Source = fmt.Sprintf("http://%s", req.RemoteAddr)
+	if sourceURL, ok := result.Metrics["u"]; ok && len(sourceURL) > 0 && sourceURL[0] != "" {
+		result.Source = sourceURL[0]
+	} else if origin := req.Header.Get("Origin"); origin != "" {
+		result.Source = origin
 	}
 
-	if ua, ok := req.Header["User-Agent"]; ok && len(ua) > 0 && ua[0] != "" {
-		result.UserAgent = ua[0]
+	if req.UserAgent() != "" {
+		result.UserAgent = req.UserAgent()
 	} else {
 		result.UserAgent = ""
 	}

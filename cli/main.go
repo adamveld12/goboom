@@ -16,6 +16,7 @@ var (
 )
 
 func main() {
+	flag.Parse()
 	gb := goboom.Goboom{
 		Method:   "POST",
 		URL:      *url,

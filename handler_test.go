@@ -83,36 +83,38 @@ func TestURLValidation(t *testing.T) {
 }
 
 type parseBeaconTestCase struct {
-	Name           string
-	InputReferer   string
-	InputUserAgent string
-	InputBody      io.Reader
-	ExpectedErr    error
-	ExpectedBeacon Beacon
+	Name            string
+	InputSourcePage string
+	InputReferer    string
+	InputUserAgent  string
+	InputBody       io.Reader
+	ExpectedErr     error
+	ExpectedBeacon  Beacon
 }
 
 func TestParseBeacon(t *testing.T) {
 	cases := []parseBeaconTestCase{
 		{
-			Name:        "Happy Path",
-			ExpectedErr: nil,
+			Name:            "Happy Path",
+			InputSourcePage: "http://boomerang-test.surge.sh/",
+			ExpectedErr:     nil,
 			ExpectedBeacon: Beacon{
-				Referer: "http://127.0.0.1:80",
-				Source:  "http://127.0.0.1:80",
+				Source: "http://boomerang-test.surge.sh/",
 			},
 		},
 		{
-			Name:           "Parses beacon correctly",
-			InputReferer:   "http://boomerang-test.surge.sh",
-			InputUserAgent: "",
-			InputBody:      postBuf,
-			ExpectedErr:    nil,
+			Name:            "Parses beacon correctly",
+			InputReferer:    "http://boomerang-test.surge.sh/",
+			InputSourcePage: "http://boomerang-test.surge.sh/test",
+			InputUserAgent:  "",
+			InputBody:       postBuf,
+			ExpectedErr:     nil,
 			ExpectedBeacon: Beacon{
-				Referer: "http://boomerang-test.surge.sh",
-				Source:  "http://boomerang-test.surge.sh/",
+				Referer: "http://boomerang-test.surge.sh/",
+				Source:  "http://boomerang-test.surge.sh/test",
 				Metrics: Metric{
 					"r":        []string{"http://boomerang-test.surge.sh/"},
-					"u":        []string{"http://boomerang-test.surge.sh/"},
+					"u":        []string{"http://boomerang-test.surge.sh/test"},
 					"c.tti.vr": []string{"665"},
 				},
 			},
@@ -121,7 +123,8 @@ func TestParseBeacon(t *testing.T) {
 	}
 
 	for idx, c := range cases {
-		req := httptest.NewRequest("POST", "http://127.0.0.1/", c.InputBody)
+		req := httptest.NewRequest("POST", "http://127.0.0.1/beacon", c.InputBody)
+		req.Header.Add("Origin", c.InputSourcePage)
 		req.Header.Add("Referer", c.InputReferer)
 		req.Header.Add("User-Agent", c.InputUserAgent)
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -148,4 +151,4 @@ func TestParseBeacon(t *testing.T) {
 	}
 }
 
-var postBuf = bytes.NewBufferString("u=http%3A%2F%2Fboomerang-test.surge.sh%2F&r=http%3A%2F%2Fboomerang-test.surge.sh%2F&c.tti.vr=665")
+var postBuf = bytes.NewBufferString("u=http%3A%2F%2Fboomerang-test.surge.sh%2Ftest&r=http%3A%2F%2Fboomerang-test.surge.sh%2F&c.tti.vr=665")
