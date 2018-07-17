@@ -19,10 +19,8 @@ func ConsoleExporter(output io.Writer) BeaconExporter {
 
 		count := 0
 		for k, v := range b.Metrics {
-			if len(v) > 0 {
-				count++
-				fmt.Fprintf(output, "\t%v=%v\n", k, v)
-			}
+			count++
+			fmt.Fprintf(output, "\t%v=%v\n", k, v)
 		}
 
 		fmt.Fprintf(output, "%v Metrics imported\n\n", count)

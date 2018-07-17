@@ -18,7 +18,7 @@ type Beacon struct {
 	Metrics   Metric    `json:"metrics"`
 }
 
-// Metric is a map of they beacon's metrics payload
+// Metric is a map of the beacon's metrics payload
 type Metric map[string]string
 
 // BeaconValidator validates a request, returning an error if the request should not be handled
