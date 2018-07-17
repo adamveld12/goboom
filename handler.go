@@ -5,15 +5,17 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Beacon represents a boomerang beacon
 type Beacon struct {
-	Referer   string
-	Source    string
-	RemoteIP  string
-	UserAgent string
-	Metrics   Metric
+	Referer   string    `json:"referer"`
+	Source    string    `json:"source"`
+	Created   time.Time `json:"created"`
+	RemoteIP  string    `json:"clientIp"`
+	UserAgent string    `json:"userAgent"`
+	Metrics   Metric    `json:"metrics"`
 }
 
 // Metric is a map of they beacon's metrics payload
@@ -67,6 +69,7 @@ func parseBeacon(req *http.Request) (Beacon, error) {
 	}
 
 	var result Beacon
+
 	if len(req.Form) > 0 {
 		result.Metrics = Metric{}
 
@@ -108,6 +111,8 @@ func parseBeacon(req *http.Request) (Beacon, error) {
 	if result.RemoteIP == "" {
 		result.RemoteIP, _, _ = net.SplitHostPort(req.RemoteAddr)
 	}
+
+	result.Created = time.Now().UTC()
 
 	return result, nil
 }
