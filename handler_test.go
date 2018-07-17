@@ -19,19 +19,18 @@ type methodTestCase struct {
 
 func TestMethodValidation(t *testing.T) {
 	cases := []methodTestCase{
-		{Name: "Happy Path", ExpectedMethod: "POST", Method: "POST", ExpectedStatus: 200},
-		{Name: "Forbidden when not matched", ExpectedMethod: "POST", Method: "GET", ExpectedStatus: 405},
-		{Name: "Accept anything when unintialized 1", ExpectedMethod: "", Method: "GET", ExpectedStatus: 200},
-		{Name: "Accept anything when unintialized 2", ExpectedMethod: "", Method: "POST", ExpectedStatus: 200},
+		{Name: "Accept Post", Method: "POST", ExpectedStatus: 200},
+		{Name: "Accept Get", Method: "GET", ExpectedStatus: 200},
+		{Name: "Deny Delete", Method: "DELETE", ExpectedStatus: 405},
+		{Name: "Deny Head", Method: "HEAD", ExpectedStatus: 405},
+		{Name: "Deny Options", Method: "OPTIONS", ExpectedStatus: 405},
 	}
 
 	str, _ := os.Open(os.DevNull)
 	defer str.Close()
 
 	for idx, c := range cases {
-		g := Goboom{
-			Method:   c.ExpectedMethod,
-			URL:      "/",
+		g := Handler{
 			Exporter: ConsoleExporter(str),
 		}
 
@@ -47,24 +46,21 @@ func TestMethodValidation(t *testing.T) {
 
 type urlTestCase struct {
 	Name           string
-	InputURL       string
 	TestURL        string
 	ExpectedStatus int
 }
 
 func TestURLValidation(t *testing.T) {
 	cases := []urlTestCase{
-		{Name: "Happy Path", InputURL: "/beacon", TestURL: "/beacon", ExpectedStatus: 200},
-		{Name: "Path doesn't match", InputURL: "/not-beacon-url", TestURL: "/beacon", ExpectedStatus: 404},
-		{Name: "Not initialized allows anything #1", InputURL: "", TestURL: "/beacon", ExpectedStatus: 200},
-		{Name: "Not initialized allows anything #2", InputURL: "", TestURL: "/beacon-url-2", ExpectedStatus: 200},
+		{Name: "Happy Path", TestURL: "/beacon", ExpectedStatus: 200},
+		{Name: "works with empty path", TestURL: "", ExpectedStatus: 200},
+		{Name: "works with multi paths", TestURL: "/beacon/url/2", ExpectedStatus: 200},
 	}
 	str, _ := os.Open(os.DevNull)
 	defer str.Close()
 
 	for idx, c := range cases {
-		g := Goboom{
-			URL:      c.InputURL,
+		g := Handler{
 			Exporter: ConsoleExporter(str),
 		}
 
@@ -113,9 +109,9 @@ func TestParseBeacon(t *testing.T) {
 				Referer: "http://boomerang-test.surge.sh/",
 				Source:  "http://boomerang-test.surge.sh/test",
 				Metrics: Metric{
-					"r":        []string{"http://boomerang-test.surge.sh/"},
-					"u":        []string{"http://boomerang-test.surge.sh/test"},
-					"c.tti.vr": []string{"665"},
+					"r":        "http://boomerang-test.surge.sh/",
+					"u":        "http://boomerang-test.surge.sh/test",
+					"c.tti.vr": "665",
 				},
 			},
 		},
@@ -137,7 +133,7 @@ func TestParseBeacon(t *testing.T) {
 				c.Name,
 				c.ExpectedErr,
 				err)
-			return
+			continue
 		}
 
 		if !reflect.DeepEqual(b, c.ExpectedBeacon) {
@@ -146,7 +142,7 @@ func TestParseBeacon(t *testing.T) {
 				c.Name,
 				c.ExpectedBeacon,
 				b)
-			return
+			continue
 		}
 	}
 }

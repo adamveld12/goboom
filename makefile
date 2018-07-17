@@ -1,15 +1,4 @@
-all: clean goboom dev
-
-clean:
-	rm -rf ./goboom
-
-ci: clean
-	go get -t -d -v ./... 
-	go test -v -cover ./...
-	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -tags netgo -a -v -o ./goboom ./cli
-
-goboom:
-	go build -o ./goboom ./cli
+.PHONY: ci clean dev lint setup test
 
 dev: clean goboom
 	./goboom \
@@ -17,4 +6,22 @@ dev: clean goboom
 	  	-origin .* \
 		-url "/beacon"
 
-.PHONY: all ci clean dev
+ci: clean setup lint test goboom
+
+clean:
+	rm -rf ./goboom
+
+setup:
+	go get -t -d -v ./... 
+
+lint:
+	go get golang.org/x/lint/golint
+	golint -set_exit_status
+	go vet -all -v
+
+test:
+	go test -v -cover ./...
+
+
+goboom:
+	go build -o ./goboom ./cli

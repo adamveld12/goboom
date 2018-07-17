@@ -21,8 +21,7 @@ goboom -address "127.0.0.1:3000" -origin '.*\\.example\\.com' -url "/beacon"
 
 ```golang
 func main() {
-	gb := goboom.Goboom{
-		URL:      "/beacon",
+	gb := goboom.Goboom {
 		Exporter: goboom.ConsoleExporter(os.Stdout),
 	}
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// Beacon represents a boomerang beacon
 type Beacon struct {
 	Referer   string
 	Source    string
@@ -12,26 +13,24 @@ type Beacon struct {
 	Metrics   Metric
 }
 
-type Metric map[string][]string
+// Metric is a map of they beacon's metrics payload
+type Metric map[string]string
 
+// BeaconValidator validates a request, returning an error if the request should not be handled
 type BeaconValidator func(*http.Request) error
+
+// BeaconExporter allows for exporting the beacon or other http.Request info to various backends or services
 type BeaconExporter func(*http.Request, Beacon) error
 
-type Goboom struct {
-	Method    string
-	URL       string
+// Handler is the beacon http.Handler
+type Handler struct {
 	Validator BeaconValidator
 	Exporter  BeaconExporter
 }
 
-func (g Goboom) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if g.Method != "" && req.Method != g.Method {
-		http.Error(res, "Unexpected http.method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if g.URL != "" && req.URL.Path != g.URL {
-		http.Error(res, "Not Found", http.StatusNotFound)
+func (g Handler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" && req.Method != "POST" {
+		http.Error(res, fmt.Sprintf("Method not allowed: %s", req.Method), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -69,18 +68,20 @@ func parseBeacon(req *http.Request) (Beacon, error) {
 		result.Metrics = Metric{}
 
 		for k, v := range req.Form {
-			result.Metrics[k] = v
+			if len(v) > 0 {
+				result.Metrics[k] = v[0]
+			}
 		}
 	}
 
-	if metricURL, ok := result.Metrics["r"]; ok && len(metricURL) > 0 {
-		result.Referer = metricURL[0]
+	if metricURL, ok := result.Metrics["r"]; ok {
+		result.Referer = metricURL
 	} else if req.Referer() != "" {
 		result.Referer = req.Referer()
 	}
 
-	if sourceURL, ok := result.Metrics["u"]; ok && len(sourceURL) > 0 && sourceURL[0] != "" {
-		result.Source = sourceURL[0]
+	if sourceURL, ok := result.Metrics["u"]; ok && sourceURL != "" {
+		result.Source = sourceURL
 	} else if origin := req.Header.Get("Origin"); origin != "" {
 		result.Source = origin
 	}

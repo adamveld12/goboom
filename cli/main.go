@@ -17,9 +17,8 @@ var (
 
 func main() {
 	flag.Parse()
-	gb := goboom.Goboom{
-		Method:   "POST",
-		URL:      *url,
+	mux := http.NewServeMux()
+	gb := goboom.Handler{
 		Exporter: goboom.ConsoleExporter(os.Stdout),
 	}
 
@@ -33,8 +32,10 @@ func main() {
 		}
 	}
 
+	mux.Handle(*url, gb)
+
 	fmt.Printf("Listening @ %s for HTTP calls on \"%s\"\n", *address, *url)
-	if err := http.ListenAndServe(*address, gb); err != nil {
+	if err := http.ListenAndServe(*address, mux); err != nil {
 		fmt.Printf("Could not listen and serve on %s: %v", *address, err)
 		os.Exit(1)
 	}
