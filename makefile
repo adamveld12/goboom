@@ -8,6 +8,8 @@ dev: clean goboom
 
 ci: clean setup lint test goboom
 
+pc: clean lint test goboom
+
 clean:
 	rm -rf ./goboom
 
