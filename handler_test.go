@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type methodTestCase struct {
@@ -139,6 +140,12 @@ func TestParseBeacon(t *testing.T) {
 				return
 			}
 
+			if time.Since(b.Created) > time.Second {
+				t.Errorf("beacon created time is not set")
+				return
+			}
+			c.ExpectedBeacon.Created = b.Created
+
 			if !reflect.DeepEqual(b, c.ExpectedBeacon) {
 				t.Errorf("beacon \nexpected\n'%+v' \ngot\n'%+v'",
 					c.ExpectedBeacon,
@@ -195,9 +202,14 @@ func TestParseForwarded(t *testing.T) {
 			Expected: "123.34.567.89",
 		},
 		{
-			Name:     "crazy (one ipv6)",
+			Name:     "crazy (one ipv4)",
 			Input:    "by=127.0.0.1; for=123.34.567.89; host=local.example.com; proto=http",
 			Expected: "123.34.567.89",
+		},
+		{
+			Name:     "crazy (one ipv6)",
+			Input:    "by=127.0.0.1; for=\"[2001:db8:cafe::17]\"; host=local.example.com; proto=http",
+			Expected: "2001:db8:cafe::17",
 		},
 	}
 
