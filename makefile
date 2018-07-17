@@ -1,12 +1,18 @@
-.PHONY: ci clean dev lint setup test
+.PHONY: ci clean dev lint pc run setup test
 
 dev: clean goboom
+	go get github.com/smartystreets/goconvey
+	goconvey
+
+run: clean goboom
 	./goboom \
 		-address localhost:3000 \
 	  	-origin .* \
 		-url "/beacon"
 
 ci: clean setup lint test goboom
+
+pc: clean lint test goboom
 
 clean:
 	rm -rf ./goboom

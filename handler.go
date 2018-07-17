@@ -2,15 +2,20 @@ package goboom
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"strings"
+	"time"
 )
 
 // Beacon represents a boomerang beacon
 type Beacon struct {
-	Referer   string
-	Source    string
-	UserAgent string
-	Metrics   Metric
+	Referer   string    `json:"referer"`
+	Source    string    `json:"source"`
+	Created   time.Time `json:"created"`
+	RemoteIP  string    `json:"clientIp"`
+	UserAgent string    `json:"userAgent"`
+	Metrics   Metric    `json:"metrics"`
 }
 
 // Metric is a map of they beacon's metrics payload
@@ -64,6 +69,7 @@ func parseBeacon(req *http.Request) (Beacon, error) {
 	}
 
 	var result Beacon
+
 	if len(req.Form) > 0 {
 		result.Metrics = Metric{}
 
@@ -92,5 +98,41 @@ func parseBeacon(req *http.Request) (Beacon, error) {
 		result.UserAgent = ""
 	}
 
+	headers := req.Header
+
+	if clientIP := headers.Get("X-Forwarded-For"); clientIP != "" {
+		if ips := strings.Split(clientIP, ","); len(ips) > 0 {
+			result.RemoteIP = ips[0]
+		}
+	} else if clientIP := headers.Get("Forwarded"); clientIP != "" {
+		result.RemoteIP = parseForwarded(clientIP)
+	}
+
+	if result.RemoteIP == "" {
+		result.RemoteIP, _, _ = net.SplitHostPort(req.RemoteAddr)
+	}
+
+	result.Created = time.Now().UTC()
+
 	return result, nil
+}
+
+func parseForwarded(forwardedHeader string) string {
+	segs := strings.Split(forwardedHeader, "; ")
+	if len(segs) > 0 {
+	}
+
+	var firstIP string
+	for _, s := range segs {
+		if len([]rune(s)) > 4 && s[:4] == "for=" {
+			firstIP = strings.Trim(s[4:], "\"")
+			break
+		}
+	}
+
+	if t, _, err := net.SplitHostPort(firstIP); err == nil {
+		firstIP = t
+	}
+
+	return strings.Trim(firstIP, "[]")
 }

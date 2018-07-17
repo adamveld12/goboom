@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type methodTestCase struct {
@@ -29,18 +30,20 @@ func TestMethodValidation(t *testing.T) {
 	str, _ := os.Open(os.DevNull)
 	defer str.Close()
 
-	for idx, c := range cases {
-		g := Handler{
-			Exporter: ConsoleExporter(str),
-		}
+	for _, c := range cases {
+		t.Run(c.Name, func(tsub *testing.T) {
+			g := Handler{
+				Exporter: ConsoleExporter(str),
+			}
 
-		req := httptest.NewRequest(c.Method, "http://127.0.0.1:3000/", nil)
-		w := httptest.NewRecorder()
-		g.ServeHTTP(w, req)
-		res := w.Result()
-		if res.StatusCode != c.ExpectedStatus {
-			t.Errorf("Method test case #%d failed: expected '%d' got '%d'", idx, c.ExpectedStatus, res.StatusCode)
-		}
+			req := httptest.NewRequest(c.Method, "http://127.0.0.1:3000/", nil)
+			w := httptest.NewRecorder()
+			g.ServeHTTP(w, req)
+			res := w.Result()
+			if res.StatusCode != c.ExpectedStatus {
+				tsub.Errorf("expected '%d' got '%d'", c.ExpectedStatus, res.StatusCode)
+			}
+		})
 	}
 }
 
@@ -59,22 +62,22 @@ func TestURLValidation(t *testing.T) {
 	str, _ := os.Open(os.DevNull)
 	defer str.Close()
 
-	for idx, c := range cases {
-		g := Handler{
-			Exporter: ConsoleExporter(str),
-		}
+	for _, c := range cases {
+		t.Run(c.Name, func(tsub *testing.T) {
+			g := Handler{
+				Exporter: ConsoleExporter(str),
+			}
 
-		req := httptest.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:3000%s", c.TestURL), nil)
-		w := httptest.NewRecorder()
-		g.ServeHTTP(w, req)
-		res := w.Result()
-		if res.StatusCode != c.ExpectedStatus {
-			t.Errorf("URL test case #%d - %s failed: expected '%d' got '%d'",
-				idx,
-				c.Name,
-				c.ExpectedStatus,
-				res.StatusCode)
-		}
+			req := httptest.NewRequest("POST", fmt.Sprintf("http://127.0.0.1:3000%s", c.TestURL), nil)
+			w := httptest.NewRecorder()
+			g.ServeHTTP(w, req)
+			res := w.Result()
+			if res.StatusCode != c.ExpectedStatus {
+				tsub.Errorf(" expected '%d' got '%d'",
+					c.ExpectedStatus,
+					res.StatusCode)
+			}
+		})
 	}
 }
 
@@ -115,36 +118,109 @@ func TestParseBeacon(t *testing.T) {
 				},
 			},
 		},
-		//{Name: "Parses user agent correctly"},
 	}
 
-	for idx, c := range cases {
-		req := httptest.NewRequest("POST", "http://127.0.0.1/beacon", c.InputBody)
-		req.Header.Add("Origin", c.InputSourcePage)
-		req.Header.Add("Referer", c.InputReferer)
-		req.Header.Add("User-Agent", c.InputUserAgent)
-		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		req.RemoteAddr = "127.0.0.1:80"
-		b, err := parseBeacon(req)
+	for _, c := range cases {
+		t.Run(c.Name, func(tsub *testing.T) {
+			req := httptest.NewRequest("POST", "http://127.0.0.1/beacon", c.InputBody)
+			req.Header.Add("Origin", c.InputSourcePage)
+			req.Header.Add("Referer", c.InputReferer)
+			req.Header.Add("User-Agent", c.InputUserAgent)
+			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			req.RemoteAddr = "127.0.0.1:80"
+			if c.ExpectedBeacon.RemoteIP == "" {
+				c.ExpectedBeacon.RemoteIP = "127.0.0.1"
+			}
 
-		if err != c.ExpectedErr {
-			t.Errorf("parseBeacon case #%d - %s failed: expected '%v' got '%v'",
-				idx,
-				c.Name,
-				c.ExpectedErr,
-				err)
-			continue
-		}
+			b, err := parseBeacon(req)
+			if err != c.ExpectedErr {
+				t.Errorf("expected '%v' got '%v'",
+					c.ExpectedErr,
+					err)
+				return
+			}
 
-		if !reflect.DeepEqual(b, c.ExpectedBeacon) {
-			t.Errorf("parseBeacon case #%d - %s failed: beacon \nexpected\n'%+v' \ngot\n'%+v'",
-				idx,
-				c.Name,
-				c.ExpectedBeacon,
-				b)
-			continue
-		}
+			if time.Since(b.Created) > time.Second {
+				t.Errorf("beacon created time is not set")
+				return
+			}
+			c.ExpectedBeacon.Created = b.Created
+
+			if !reflect.DeepEqual(b, c.ExpectedBeacon) {
+				t.Errorf("beacon \nexpected\n'%+v' \ngot\n'%+v'",
+					c.ExpectedBeacon,
+					b)
+				return
+			}
+		})
 	}
 }
 
 var postBuf = bytes.NewBufferString("u=http%3A%2F%2Fboomerang-test.surge.sh%2Ftest&r=http%3A%2F%2Fboomerang-test.surge.sh%2F&c.tti.vr=665")
+
+type parseForwardedCase struct {
+	Name     string
+	Input    string
+	Expected string
+}
+
+func TestParseForwarded(t *testing.T) {
+	cases := []parseForwardedCase{
+		{
+			Name:     "Empty string",
+			Input:    "",
+			Expected: "",
+		},
+		{
+			Name:     "One for entry (ipv4)",
+			Input:    "for=123.34.567.89",
+			Expected: "123.34.567.89",
+		},
+		{
+			Name:     "One for entry (ipv4 w\\ port)",
+			Input:    "for=123.34.567.89:1234",
+			Expected: "123.34.567.89",
+		},
+		{
+			Name:     "One for entry (ipv6)",
+			Input:    "for=\"[2001:db8:cafe::17]\"",
+			Expected: "2001:db8:cafe::17",
+		},
+		{
+			Name:     "One for entry (ipv6 w\\ port)",
+			Input:    "for=\"[2001:db8:cafe::17]:4711\"",
+			Expected: "2001:db8:cafe::17",
+		},
+		{
+			Name:     "2 for entry",
+			Input:    "for=123.34.567.89; for=98.87.654.321",
+			Expected: "123.34.567.89",
+		},
+		{
+			Name:     "2 for entry (one ipv6)",
+			Input:    "for=123.34.567.89; for=\"[2001:db8:cafe::17]\"",
+			Expected: "123.34.567.89",
+		},
+		{
+			Name:     "crazy (one ipv4)",
+			Input:    "by=127.0.0.1; for=123.34.567.89; host=local.example.com; proto=http",
+			Expected: "123.34.567.89",
+		},
+		{
+			Name:     "crazy (one ipv6)",
+			Input:    "by=127.0.0.1; for=\"[2001:db8:cafe::17]\"; host=local.example.com; proto=http",
+			Expected: "2001:db8:cafe::17",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Name, func(tsub *testing.T) {
+			actual := parseForwarded(c.Input)
+			if actual != c.Expected {
+				t.Errorf(" failed:\nexpected:\n%s\ngot:\n%s",
+					c.Expected,
+					actual)
+			}
+		})
+	}
+}
