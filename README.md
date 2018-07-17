@@ -19,7 +19,16 @@ goboom -address "127.0.0.1:3000" -origin '.*\\.example\\.com' -url "/beacon"
 
 ## How to library
 
+```
+go get github.com/adamveld12/goboom
+```
+
+
 ```golang
+package main
+
+import github.com/adamveld12/goboom
+
 func main() {
 	gb := goboom.Handler {
 		Exporter: goboom.ConsoleExporter(os.Stdout),
